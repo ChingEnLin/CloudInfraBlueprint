@@ -1,0 +1,32 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "chart.metadataName.backendservice" . }}
+  labels:
+    {{ .Values.namespace.backend }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "chart.metadataName.backendservice" . }}
+  minReplicas: {{ .Values.autoscaling.backend.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.backend.maxReplicas }}
+  targetCPUUtilizationPercentage: {{ .Values.autoscaling.backend.targetCPUUtilizationPercentage }}
+
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "chart.metadataName.frontend" . }}
+  labels:
+    {{ .Values.namespace.backend }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "chart.metadataName.frontend" . }}
+  minReplicas: {{ .Values.autoscaling.frontend.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.frontend.maxReplicas }}
+  targetCPUUtilizationPercentage: {{ .Values.autoscaling.frontend.targetCPUUtilizationPercentage }}
+{{- end }}

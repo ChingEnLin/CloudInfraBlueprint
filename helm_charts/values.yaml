@@ -1,0 +1,101 @@
+# Default values for chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+enviroment: "dev"
+nameOverride: ""
+fullnameOverride: ""
+
+namespace: 
+  backend: &benamespace "backendservice"
+  frontend: &fenamespace "frontendservice"
+
+microservice:
+  backendservice:
+    name: *benamespace
+    namespace: *benamespace
+  frontendservice:
+    name: *fenamespace
+    namespace: *fenamespace
+
+service:
+  type: 
+    backend: ClusterIP
+    frontend: NodePort
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: &ingressClassNameBE nginx-dev
+  annotations:
+    common: 
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    backend:
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      cert-manager.io/cluster-issuer: &privateKeySecretRefBE letsencrypt-dev
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "180"
+    frontend:
+      kubernetes.io/ingress.class: &ingressClassNameFE nginx-frontend-dev
+      nginx.ingress.kubernetes.io/rewrite-target: /$1
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 32k
+      nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+      cert-manager.io/cluster-issuer: &privateKeySecretRefFE letsencrypt-frontend-dev
+  spec:
+    backend:
+      hosts:
+        - host: &host backend-dev.westeurope.cloudapp.azure.com
+          paths:
+            - path: /route(/|$)(.*)
+              pathType: Prefix
+      tls: 
+      - secretName: tls-secret-dev
+        hosts:
+          - *host
+    frontend:
+      hosts:
+        - host: &host frontend-dev.westeurope.cloudapp.azure.com
+          paths:
+            - path: /(.*)
+              pathType: Prefix
+      tls: 
+      - secretName: tls-secret-frontend-dev
+        hosts:
+          - *host
+
+autoscaling:
+  enabled: true
+  backend:
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+  frontend:
+    minReplicas: 1
+    maxReplicas: 1
+    targetCPUUtilizationPercentage: 70
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+issuer:
+  server: https://acme-v02.api.letsencrypt.org/directory
+  email: development@domain.com
+  backend:
+    name: letsencrypt
+    privateKeySecretRef: *privateKeySecretRefBE
+    ingress:
+      - class: *ingressClassNameBE
+        nodeSelector:
+          "kubernetes.io/os": linux
+  frontend:
+    name: letsencrypt-webplatform
+    privateKeySecretRef: *privateKeySecretRefFE
+    ingress:
+      - class: *ingressClassNameFE
+        nodeSelector:
+          "kubernetes.io/os": linux
